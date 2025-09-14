@@ -120,7 +120,7 @@ $username = $_SESSION["username"];
     <!-- Calendar Section (Right Aligned) -->
     <div class="flex justify-end">
       <div class="bg-white p-6 rounded-xl shadow border w-full max-w-lg">
-        <h3 class="text-xl font-semibold mb-4">Calendar</h3>
+        <h3 class="text-xl font-semibold mb-4">chaaaaaaaaaaaaaaa</h3>
         <div id="calendar"></div>
       </div>
     </div>
