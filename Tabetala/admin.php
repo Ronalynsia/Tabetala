@@ -2,7 +2,7 @@
 session_start();
 require_once __DIR__ . '/config/config.php'; // adjust if needed
 
-// --- Ensure $conn is available (supports two patterns: Database class or $conn from config)
+// --- Ensure $conn is available
 $conn = null;
 if (class_exists('Database')) {
     try {
@@ -42,7 +42,7 @@ if (!$user) {
     exit;
 }
 
-// Grab any flash messages set by update_profile.php
+// Grab flash messages
 $success = $_SESSION['profile_success'] ?? null;
 $errors  = $_SESSION['profile_errors'] ?? null;
 unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
@@ -103,9 +103,17 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
     <?php endif; ?>
 
     <div class="bg-white p-8 rounded-xl shadow-md">
-      <form action="update_profile.php" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Hidden id for update -->
+      <form action="update_profile.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <input type="hidden" name="user_id" value="<?= (int)($user['id'] ?? 0) ?>">
+
+        <!-- Profile Picture -->
+        <div class="col-span-2 flex flex-col items-center">
+          <img src="<?= htmlspecialchars($user['profile_picture'] ?? 'uploads/default.png') ?>" 
+               alt="Profile Picture" 
+               class="w-32 h-32 rounded-full object-cover border mb-3">
+          <input type="file" name="profile_picture" accept="image/*" class="text-sm text-gray-600">
+          <p class="text-xs text-gray-500 mt-1">Upload JPG/PNG (max 2MB)</p>
+        </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-700">First Name</label>
@@ -132,13 +140,28 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
           <input type="text" value="<?= htmlspecialchars($user['role'] ?? '') ?>" class="mt-1 w-full px-4 py-2 border rounded bg-gray-100" readonly>
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700">New Password</label>
-          <input type="password" name="password" placeholder="Leave blank to keep current" class="mt-1 w-full px-4 py-2 border rounded">
+        <!-- Password Change Section -->
+        <div class="col-span-2 border-t pt-4 mt-4">
+          <h3 class="text-lg font-semibold text-gray-700 mb-3">Change Password</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Current Password</label>
+              <input type="password" name="current_password" class="mt-1 w-full px-4 py-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">New Password</label>
+              <input type="password" name="new_password" class="mt-1 w-full px-4 py-2 border rounded">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+              <input type="password" name="confirm_password" class="mt-1 w-full px-4 py-2 border rounded">
+            </div>
+          </div>
         </div>
 
-        <div class="col-span-2">
-          <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded">Update Profile</button>
+        <div class="col-span-2 mt-6 flex gap-4">
+          <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded">Update Profile</button>
+          <button type="reset" class="flex-1 bg-gray-400 text-white py-2 rounded">Reset</button>
         </div>
       </form>
     </div>
