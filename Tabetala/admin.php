@@ -42,7 +42,7 @@ if (!$user) {
     exit;
 }
 
-// Flash messages from update_profile.php
+// Flash messages
 $success = $_SESSION['profile_success'] ?? null;
 $errors  = $_SESSION['profile_errors'] ?? null;
 unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
@@ -133,15 +133,19 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
         <div class="border-b mb-6 flex justify-center space-x-10">
           <button id="user-info-tab" onclick="showTab('user-info')"
                   class="tab-link border-b-2 border-blue-600 text-blue-600 font-semibold pb-2">
-            User Account Info
+            User Profile
           </button>
           <button id="change-avatar-tab" onclick="showTab('change-avatar')"
-                  class="tab-link pb-2">Change Avatar</button>
+                  class="tab-link pb-2">
+            Change Profile
+          </button>
           <button id="change-password-tab" onclick="showTab('change-password')"
-                  class="tab-link pb-2">Change Password</button>
+                  class="tab-link pb-2">
+            Change Password
+          </button>
         </div>
 
-        <!-- User Info Tab -->
+        <!-- User Profile Tab -->
         <div id="user-info" class="tab-pane">
           <form action="update_profile.php" method="POST" class="space-y-4">
             <input type="hidden" name="user_id" value="<?= (int)($user['id'] ?? 0) ?>">
@@ -186,11 +190,11 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
           </form>
         </div>
 
-        <!-- Change Avatar Tab -->
+        <!-- Change Profile Tab -->
         <div id="change-avatar" class="tab-pane hidden">
           <form action="update_avatar.php" method="POST" enctype="multipart/form-data" class="space-y-4">
             <div>
-              <label class="block text-sm">Upload New Avatar</label>
+              <label class="block text-sm">Upload New Profile Image</label>
               <input type="file" name="avatar" accept="image/*"
                      class="w-full border rounded px-3 py-2">
             </div>
