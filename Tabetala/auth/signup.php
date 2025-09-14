@@ -52,7 +52,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <title>Sign Up</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="h-screen w-screen flex flex-col items-center justify-center bg-cover bg-center relative" style="background-image: url('../bg system.jpg');">
+<body class="h-screen w-screen flex flex-col items-center justify-center bg-cover bg-center relative" style="background-image: url('bg system.jpg');">
 
   <!-- System Title -->
   <h1 class="relative z-10 text-3xl font-bold text-white mb-6 drop-shadow-lg text-center">
