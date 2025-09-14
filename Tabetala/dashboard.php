@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . "/config/config.php";
 
 // ✅ Only allow logged-in users
 if (!isset($_SESSION["user_id"])) {
@@ -8,6 +9,18 @@ if (!isset($_SESSION["user_id"])) {
 }
 
 $username = $_SESSION["username"];
+
+// ✅ Database connection
+$db = new Database();
+$conn = $db->connect();
+
+// ✅ Fetch latest lab requests (for notifications)
+try {
+    $stmtNotif = $conn->query("SELECT * FROM lab_requests ORDER BY created_at DESC LIMIT 5");
+    $latestRequests = $stmtNotif->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $latestRequests = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,15 +48,24 @@ $username = $_SESSION["username"];
         <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a1 1 0 10-2 0v1.083A6 6 0 006 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
         </svg>
-        <span class="absolute top-0 right-0 inline-block w-2 h-2 bg-red-600 rounded-full"></span>
+        <?php if (!empty($latestRequests)): ?>
+          <span class="absolute top-0 right-0 inline-block w-2 h-2 bg-red-600 rounded-full"></span>
+        <?php endif; ?>
       </button>
       <div id="notifDropdown" class="origin-top-right absolute right-0 mt-2 w-72 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 hidden">
         <div class="py-2">
           <a href="notifications.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Go to Notifications Page</a>
           <div class="border-t my-1"></div>
-          <p class="px-4 py-2 text-sm text-gray-600">⚠️ Lab 1: Keyboard missing</p>
-          <p class="px-4 py-2 text-sm text-gray-600">📝 Request: Access for new staff</p>
-          <p class="px-4 py-2 text-sm text-gray-600">⚠️ Lab 2: Mouse missing</p>
+          <?php if ($latestRequests): ?>
+            <?php foreach ($latestRequests as $req): ?>
+              <p class="px-4 py-2 text-sm text-gray-600">
+                📝 <?= htmlspecialchars($req['fullname']) ?> requested <?= htmlspecialchars($req['lab']) ?>
+                (<?= htmlspecialchars($req['date']) ?> @ <?= htmlspecialchars($req['time']) ?>)
+              </p>
+            <?php endforeach; ?>
+          <?php else: ?>
+            <p class="px-4 py-2 text-sm text-gray-500">No new lab requests.</p>
+          <?php endif; ?>
         </div>
       </div>
     </div>
@@ -78,23 +100,20 @@ $username = $_SESSION["username"];
 <!-- Sidebar + Main Layout -->
 <div class="flex min-h-screen">
   <!-- Sidebar -->
-<!-- Sidebar -->
-<aside class="w-64 bg-blue-900 text-white p-6 border-r border-blue-700">
-  <ul class="space-y-2 text-lg font-medium">
-    <li><a href="dashboard.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Dashboard</a></li>
-    <li><a href="Occupancy.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Occupancy Monitoring</a></li>
-    <li><a href="Access.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Access Control</a></li>
-    <li><a href="Equipment.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Equipment Status</a></li>
-   <li><a href="lab_requests_list.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Request Lab</a></li> <!-- ✅ Added -->
- <li><a href="Reports.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Reports</a></li>
-    <li><a href="Settings.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Settings</a></li>
-  </ul>
-</aside>
-
+  <aside class="w-64 bg-blue-900 text-white p-6 border-r border-blue-700">
+    <ul class="space-y-2 text-lg font-medium">
+      <li><a href="dashboard.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Dashboard</a></li>
+      <li><a href="Occupancy.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Occupancy Monitoring</a></li>
+      <li><a href="Access.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Access Control</a></li>
+      <li><a href="Equipment.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Equipment Status</a></li>
+      <li><a href="lab_requests_list.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Request Lab</a></li>
+      <li><a href="Reports.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Reports</a></li>
+      <li><a href="Settings.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Settings</a></li>
+    </ul>
+  </aside>
 
   <!-- Main Content -->
   <main class="flex-1 p-10">
-    
     <h2 class="text-3xl font-bold mb-6">Dashboard Overview</h2>
     <div class="grid grid-cols-4 gap-6 mb-10">
       <div class="bg-white rounded-xl p-6 shadow text-center border">
@@ -116,6 +135,7 @@ $username = $_SESSION["username"];
     </div>
   </main>
 </div>
+
 <script>
   // 🔎 Global Search Index
   const searchIndex = [
