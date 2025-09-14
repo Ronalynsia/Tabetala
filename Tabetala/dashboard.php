@@ -95,7 +95,7 @@ $username = $_SESSION["username"];
   <!-- Main Content -->
   <main class="flex-1 p-10">
     
-    <h2 class="text-3xl font-bold mb-6">Dashboard Overview</h2>
+    <h2 class="text-3xl font-bold mb-6">jonah libog</h2>
     <div class="grid grid-cols-4 gap-6 mb-10">
       <div class="bg-white rounded-xl p-6 shadow text-center border">
         <p class="text-3xl font-bold">25</p>
