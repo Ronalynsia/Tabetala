@@ -103,9 +103,26 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
     <?php endif; ?>
 
     <div class="bg-white p-8 rounded-xl shadow-md">
-      <form action="update_profile.php" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form action="update_profile.php" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Hidden id for update -->
         <input type="hidden" name="user_id" value="<?= (int)($user['id'] ?? 0) ?>">
+
+        <div class="col-span-2 flex flex-col items-center mb-6">
+          <?php if (!empty($user['profile_picture'])): ?>
+            <img id="previewImg" src="uploads/<?= htmlspecialchars($user['profile_picture']) ?>" 
+                 alt="Profile Picture" 
+                 class="w-32 h-32 object-cover rounded-full border mb-4">
+          <?php else: ?>
+            <img id="previewImg" src="assets/default-avatar.png" 
+                 alt="Default Avatar" 
+                 class="w-32 h-32 object-cover rounded-full border mb-4">
+          <?php endif; ?>
+
+          <label class="block text-sm font-medium text-gray-700 mb-2">Profile Picture</label>
+          <input type="file" name="profile_picture" accept="image/*" 
+                 class="w-full px-4 py-2 border rounded"
+                 onchange="previewFile(this)">
+        </div>
 
         <div>
           <label class="block text-sm font-medium text-gray-700">First Name</label>
@@ -149,6 +166,17 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
   document.getElementById('userMenuButton').addEventListener('click', function(e) {
     document.getElementById('userDropdown').classList.toggle('hidden');
   });
+
+  function previewFile(input) {
+    const file = input.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('previewImg').src = e.target.result;
+      }
+      reader.readAsDataURL(file);
+    }
+  }
 </script>
 
 </body>
