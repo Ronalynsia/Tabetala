@@ -21,10 +21,6 @@ $username = $_SESSION["username"];
     .nav-section.active { display: block; }
     #searchResults { max-height: 200px; overflow-y: auto; }
   </style>
-
-  <!-- FullCalendar -->
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -82,17 +78,19 @@ $username = $_SESSION["username"];
 <!-- Sidebar + Main Layout -->
 <div class="flex min-h-screen">
   <!-- Sidebar -->
-  <aside class="w-64 bg-blue-900 text-white p-6 border-r border-blue-700">
-    <ul class="space-y-2 text-lg font-medium">
-      <li><a href="dashboard.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Dashboard</a></li>
-      <li><a href="Occupancy.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Occupancy Monitoring</a></li>
-      <li><a href="Access.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Access Control</a></li>
-      <li><a href="Equipment.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Equipment Status</a></li>
-      <li><a href="lab_requests_list.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Request Lab</a></li>
-      <li><a href="Reports.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Reports</a></li>
-      <li><a href="Settings.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Settings</a></li>
-    </ul>
-  </aside>
+<!-- Sidebar -->
+<aside class="w-64 bg-blue-900 text-white p-6 border-r border-blue-700">
+  <ul class="space-y-2 text-lg font-medium">
+    <li><a href="dashboard.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Dashboard</a></li>
+    <li><a href="Occupancy.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Occupancy Monitoring</a></li>
+    <li><a href="Access.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Access Control</a></li>
+    <li><a href="Equipment.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Equipment Status</a></li>
+   <li><a href="lab_requests_list.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Request Lab</a></li> <!-- ✅ Added -->
+ <li><a href="Reports.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Reports</a></li>
+    <li><a href="Settings.php" class="nav-link block px-2 py-2 rounded hover:bg-blue-800">Settings</a></li>
+  </ul>
+</aside>
+
 
   <!-- Main Content -->
   <main class="flex-1 p-10">
@@ -116,17 +114,8 @@ $username = $_SESSION["username"];
         <p class="text-sm text-gray-500">Unauthorized Access</p>
       </div>
     </div>
-
-    <!-- Calendar Section (Right Side Only) -->
-    <div class="flex justify-end">
-      <div class="bg-white p-6 rounded-xl shadow border w-full max-w-lg">
-        <h3 class="text-xl font-semibold mb-4">Calendar</h3>
-        <div id="calendar"></div>
-      </div>
-    </div>
   </main>
 </div>
-
 <script>
   // 🔎 Global Search Index
   const searchIndex = [
@@ -158,7 +147,7 @@ $username = $_SESSION["username"];
 
       if (matches.length > 0) {
         resultsBox.innerHTML = matches
-          .map(item => <a href="${item.link}" class="block px-4 py-2 hover:bg-gray-100">🔗 ${item.name}</a>)
+          .map(item => `<a href="${item.link}" class="block px-4 py-2 hover:bg-gray-100">🔗 ${item.name}</a>`)
           .join("");
         resultsBox.classList.remove("hidden");
       }
@@ -183,20 +172,6 @@ $username = $_SESSION["username"];
     if (!document.getElementById("searchInput").contains(e.target)) {
       document.getElementById("searchResults").classList.add("hidden");
     }
-  });
-
-  // 📅 FullCalendar
-  document.addEventListener('DOMContentLoaded', function () {
-    var calendarEl = document.getElementById('calendar');
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
-      events: [
-        { title: 'Lab 1 Maintenance', start: '2025-09-15' },
-        { title: 'Unauthorized Access Reported', start: '2025-09-12' },
-        { title: 'System Check', start: '2025-09-18' }
-      ]
-    });
-    calendar.render();
   });
 </script>
 
