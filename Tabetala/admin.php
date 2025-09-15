@@ -1,18 +1,14 @@
 <?php
 session_start();
-require_once __DIR__ . '/config/config.php'; // adjust if needed
+require_once __DIR__ . '/config/config.php';
 
-// --- Ensure $conn is available (supports two patterns: Database class or $conn from config)
+// --- DB connection
 $conn = null;
 if (class_exists('Database')) {
-    try {
-        $db = new Database();
-        $conn = $db->connect();
-    } catch (Exception $e) {
-        die("Database connection error: " . $e->getMessage());
-    }
+    $db = new Database();
+    $conn = $db->connect();
 } elseif (isset($conn) && $conn instanceof PDO) {
-    // config.php already gave us $conn
+    // already from config
 } elseif (isset($pdo) && $pdo instanceof PDO) {
     $conn = $pdo;
 } else {
@@ -27,25 +23,58 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = (int) $_SESSION['user_id'];
 
-// --- Fetch user safely
-try {
-    $stmt = $conn->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
-    $stmt->execute([":id" => $user_id]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    die("Query error: " . $e->getMessage());
+// --- Handle update (POST)
+$errors = [];
+$success = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $first_name = trim($_POST['first_name'] ?? '');
+    $last_name  = trim($_POST['last_name'] ?? '');
+    $username   = trim($_POST['username'] ?? '');
+    $email      = trim($_POST['email'] ?? '');
+    $password   = trim($_POST['password'] ?? '');
+
+    if ($first_name === '' || $last_name === '' || $username === '' || $email === '') {
+        $errors[] = "All fields except password are required.";
+    }
+
+    if (empty($errors)) {
+        try {
+            if ($password !== '') {
+                $hashed = password_hash($password, PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("UPDATE users 
+                    SET first_name=:fn, last_name=:ln, username=:un, email=:em, password=:pw 
+                    WHERE id=:id");
+                $stmt->execute([
+                    ":fn"=>$first_name, ":ln"=>$last_name, ":un"=>$username,
+                    ":em"=>$email, ":pw"=>$hashed, ":id"=>$user_id
+                ]);
+            } else {
+                $stmt = $conn->prepare("UPDATE users 
+                    SET first_name=:fn, last_name=:ln, username=:un, email=:em 
+                    WHERE id=:id");
+                $stmt->execute([
+                    ":fn"=>$first_name, ":ln"=>$last_name, ":un"=>$username,
+                    ":em"=>$email, ":id"=>$user_id
+                ]);
+            }
+            $success = "Profile updated successfully.";
+        } catch (PDOException $e) {
+            $errors[] = "Error updating profile: " . $e->getMessage();
+        }
+    }
 }
+
+// --- Fetch user info again
+$stmt = $conn->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+$stmt->execute([":id" => $user_id]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
     session_destroy();
     header("Location: auth/signin.php");
     exit;
 }
-
-// Grab any flash messages set by update_profile.php
-$success = $_SESSION['profile_success'] ?? null;
-$errors  = $_SESSION['profile_errors'] ?? null;
-unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -54,7 +83,6 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Admin Profile</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>#searchResults { max-height: 200px; overflow-y: auto; }</style>
 </head>
 <body class="bg-gray-100 font-sans">
 
@@ -92,7 +120,7 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
       <div class="mb-4 p-4 bg-green-100 text-green-800 rounded"><?= htmlspecialchars($success) ?></div>
     <?php endif; ?>
 
-    <?php if (!empty($errors) && is_array($errors)): ?>
+    <?php if (!empty($errors)): ?>
       <div class="mb-4 p-4 bg-red-100 text-red-800 rounded">
         <ul class="list-disc pl-5">
           <?php foreach ($errors as $err): ?>
@@ -103,8 +131,7 @@ unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
     <?php endif; ?>
 
     <div class="bg-white p-8 rounded-xl shadow-md">
-      <form action="update_profile.php" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Hidden id for update -->
+      <form action="" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <input type="hidden" name="user_id" value="<?= (int)($user['id'] ?? 0) ?>">
 
         <div>
