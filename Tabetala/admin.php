@@ -2,181 +2,93 @@
 session_start();
 require_once __DIR__ . '/config/config.php';
 
-// --- DB connection
+// ✅ Connect to DB
 $conn = null;
 if (class_exists('Database')) {
     $db = new Database();
     $conn = $db->connect();
 } elseif (isset($conn) && $conn instanceof PDO) {
-    // already from config
+    // already
 } elseif (isset($pdo) && $pdo instanceof PDO) {
     $conn = $pdo;
 } else {
-    die("Database connection not found. Check config.php");
+    die("Database connection not found.");
 }
 
-// --- Require login
-if (!isset($_SESSION['user_id'])) {
-    header("Location: auth/signin.php");
+if (!isset($_POST['action']) || !isset($_POST['user_id'])) {
+    header("Location: admin_profile.php");
     exit;
 }
 
-$user_id = (int) $_SESSION['user_id'];
+$action  = $_POST['action'];
+$user_id = (int) $_POST['user_id'];
+$errors  = [];
 
-// --- Handle update (POST)
-$errors = [];
-$success = null;
+// ✅ Update Avatar
+if ($action === "avatar") {
+    if (!empty($_FILES['avatar']['name'])) {
+        $targetDir = "uploads/";
+        if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $first_name = trim($_POST['first_name'] ?? '');
-    $last_name  = trim($_POST['last_name'] ?? '');
-    $username   = trim($_POST['username'] ?? '');
-    $email      = trim($_POST['email'] ?? '');
-    $password   = trim($_POST['password'] ?? '');
+        $fileName = time() . "_" . basename($_FILES["avatar"]["name"]);
+        $targetFile = $targetDir . $fileName;
 
-    if ($first_name === '' || $last_name === '' || $username === '' || $email === '') {
-        $errors[] = "All fields except password are required.";
-    }
-
-    if (empty($errors)) {
-        try {
-            if ($password !== '') {
-                $hashed = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("UPDATE users 
-                    SET first_name=:fn, last_name=:ln, username=:un, email=:em, password=:pw 
-                    WHERE id=:id");
-                $stmt->execute([
-                    ":fn"=>$first_name, ":ln"=>$last_name, ":un"=>$username,
-                    ":em"=>$email, ":pw"=>$hashed, ":id"=>$user_id
-                ]);
-            } else {
-                $stmt = $conn->prepare("UPDATE users 
-                    SET first_name=:fn, last_name=:ln, username=:un, email=:em 
-                    WHERE id=:id");
-                $stmt->execute([
-                    ":fn"=>$first_name, ":ln"=>$last_name, ":un"=>$username,
-                    ":em"=>$email, ":id"=>$user_id
-                ]);
-            }
-            $success = "Profile updated successfully.";
-        } catch (PDOException $e) {
-            $errors[] = "Error updating profile: " . $e->getMessage();
+        if (move_uploaded_file($_FILES["avatar"]["tmp_name"], $targetFile)) {
+            $stmt = $conn->prepare("UPDATE users SET avatar=:avatar WHERE id=:id");
+            $stmt->execute([":avatar"=>$targetFile, ":id"=>$user_id]);
+            $_SESSION['profile_success'] = "Profile picture updated.";
+        } else {
+            $errors[] = "Failed to upload image.";
         }
+    } else {
+        $errors[] = "No file selected.";
     }
 }
 
-// --- Fetch user info again
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
-$stmt->execute([":id" => $user_id]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+// ✅ Update Info
+if ($action === "info") {
+    $first = trim($_POST['first_name']);
+    $last  = trim($_POST['last_name']);
+    $usern = trim($_POST['username']);
+    $email = trim($_POST['email']);
 
-if (!$user) {
-    session_destroy();
-    header("Location: auth/signin.php");
-    exit;
+    if ($first=="" || $last=="" || $usern=="" || $email=="") {
+        $errors[] = "All fields are required.";
+    }
+
+    if (!$errors) {
+        $stmt = $conn->prepare("UPDATE users SET first_name=:f,last_name=:l,username=:u,email=:e WHERE id=:id");
+        $stmt->execute([":f"=>$first,":l"=>$last,":u"=>$usern,":e"=>$email,":id"=>$user_id]);
+        $_SESSION['profile_success'] = "Profile information updated.";
+    }
 }
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin Profile</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans">
 
-<header class="w-full bg-white border-b px-6 py-4 shadow flex items-center justify-between">
-  <h1 class="text-2xl font-bold text-blue-900">TabeTalá</h1>
-  <div class="flex items-center gap-4">
-    <div class="relative">
-      <button id="userMenuButton" class="inline-flex items-center px-4 py-2 bg-white border rounded text-sm">
-        <?= htmlspecialchars($user['username'] ?? '') ?> ▾
-      </button>
-      <div id="userDropdown" class="hidden origin-top-right absolute right-0 mt-2 w-40 bg-white border rounded shadow">
-        <a href="admin.php" class="block px-4 py-2 hover:bg-gray-100">Profile</a>
-        <a href="logout.php" class="block px-4 py-2 hover:bg-gray-100">Log Out</a>
-      </div>
-    </div>
-  </div>
-</header>
+// ✅ Change Password
+if ($action === "password") {
+    $current = $_POST['current_password'];
+    $new     = $_POST['new_password'];
+    $confirm = $_POST['confirm_password'];
 
-<div class="flex min-h-screen">
-  <aside class="w-64 bg-blue-900 text-white p-6">
-    <ul class="space-y-2">
-      <li><a href="dashboard.php" class="block px-2 py-2 rounded hover:bg-blue-800">Dashboard</a></li>
-      <li><a href="Occupancy.php" class="block px-2 py-2 rounded hover:bg-blue-800">Occupancy Monitoring</a></li>
-      <li><a href="Access.php" class="block px-2 py-2 rounded hover:bg-blue-800">Access Control</a></li>
-      <li><a href="Equipment.php" class="block px-2 py-2 rounded hover:bg-blue-800">Equipment Status</a></li>
-      <li><a href="Reports.php" class="block px-2 py-2 rounded hover:bg-blue-800">Reports</a></li>
-      <li><a href="Settings.php" class="block px-2 py-2 rounded hover:bg-blue-800">Settings</a></li>
-    </ul>
-  </aside>
+    $stmt = $conn->prepare("SELECT password FROM users WHERE id=:id");
+    $stmt->execute([":id"=>$user_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-  <main class="flex-1 p-10">
-    <h2 class="text-3xl font-bold mb-6">Admin Profile</h2>
+    if (!$row || !password_verify($current, $row['password'])) {
+        $errors[] = "Current password is incorrect.";
+    } elseif ($new !== $confirm) {
+        $errors[] = "Passwords do not match.";
+    } elseif (strlen($new) < 6) {
+        $errors[] = "Password must be at least 6 characters.";
+    } else {
+        $hash = password_hash($new, PASSWORD_DEFAULT);
+        $stmt = $conn->prepare("UPDATE users SET password=:p WHERE id=:id");
+        $stmt->execute([":p"=>$hash,":id"=>$user_id]);
+        $_SESSION['profile_success'] = "Password updated successfully.";
+    }
+}
 
-    <?php if ($success): ?>
-      <div class="mb-4 p-4 bg-green-100 text-green-800 rounded"><?= htmlspecialchars($success) ?></div>
-    <?php endif; ?>
-
-    <?php if (!empty($errors)): ?>
-      <div class="mb-4 p-4 bg-red-100 text-red-800 rounded">
-        <ul class="list-disc pl-5">
-          <?php foreach ($errors as $err): ?>
-            <li><?= htmlspecialchars($err) ?></li>
-          <?php endforeach; ?>
-        </ul>
-      </div>
-    <?php endif; ?>
-
-    <div class="bg-white p-8 rounded-xl shadow-md">
-      <form action="" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <input type="hidden" name="user_id" value="<?= (int)($user['id'] ?? 0) ?>">
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">First Name</label>
-          <input type="text" name="first_name" value="<?= htmlspecialchars($user['first_name'] ?? '') ?>" class="mt-1 w-full px-4 py-2 border rounded">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Last Name</label>
-          <input type="text" name="last_name" value="<?= htmlspecialchars($user['last_name'] ?? '') ?>" class="mt-1 w-full px-4 py-2 border rounded">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Username</label>
-          <input type="text" name="username" value="<?= htmlspecialchars($user['username'] ?? '') ?>" class="mt-1 w-full px-4 py-2 border rounded">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Email</label>
-          <input type="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" class="mt-1 w-full px-4 py-2 border rounded">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Role</label>
-          <input type="text" value="<?= htmlspecialchars($user['role'] ?? '') ?>" class="mt-1 w-full px-4 py-2 border rounded bg-gray-100" readonly>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700">New Password</label>
-          <input type="password" name="password" placeholder="Leave blank to keep current" class="mt-1 w-full px-4 py-2 border rounded">
-        </div>
-
-        <div class="col-span-2">
-          <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded">Update Profile</button>
-        </div>
-      </form>
-    </div>
-  </main>
-</div>
-
-<script>
-  document.getElementById('userMenuButton').addEventListener('click', function(e) {
-    document.getElementById('userDropdown').classList.toggle('hidden');
-  });
-</script>
-
-</body>
-</html>
+if ($errors) {
+    $_SESSION['profile_errors'] = $errors;
+}
+header("Location: admin_profile.php");
+exit;
