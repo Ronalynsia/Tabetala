@@ -2,93 +2,132 @@
 session_start();
 require_once __DIR__ . '/config/config.php';
 
-// ✅ Connect to DB
+// ✅ DB connect
 $conn = null;
 if (class_exists('Database')) {
     $db = new Database();
     $conn = $db->connect();
 } elseif (isset($conn) && $conn instanceof PDO) {
-    // already
+    // already connected
 } elseif (isset($pdo) && $pdo instanceof PDO) {
     $conn = $pdo;
 } else {
     die("Database connection not found.");
 }
 
-if (!isset($_POST['action']) || !isset($_POST['user_id'])) {
-    header("Location: admin_profile.php");
+// ✅ Require login
+if (!isset($_SESSION['user_id'])) {
+    header("Location: auth/signin.php");
+    exit;
+}
+$user_id = (int) $_SESSION['user_id'];
+
+// ✅ Fetch user data
+$stmt = $conn->prepare("SELECT * FROM users WHERE id=:id LIMIT 1");
+$stmt->execute([":id"=>$user_id]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$user) {
+    session_destroy();
+    header("Location: auth/signin.php");
     exit;
 }
 
-$action  = $_POST['action'];
-$user_id = (int) $_POST['user_id'];
-$errors  = [];
+// ✅ Flash messages
+$success = $_SESSION['profile_success'] ?? null;
+$errors  = $_SESSION['profile_errors'] ?? null;
+unset($_SESSION['profile_success'], $_SESSION['profile_errors']);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Profile</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    .profile-section { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 25px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);}
+    .profile-pic { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; border: 3px solid #ddd;}
+    .section-title { font-weight: bold; margin-bottom: 15px; color: #333;}
+  </style>
+</head>
+<body class="bg-light">
+<div class="container py-5">
+  <h3 class="mb-4">👤 Profile Account</h3>
 
-// ✅ Update Avatar
-if ($action === "avatar") {
-    if (!empty($_FILES['avatar']['name'])) {
-        $targetDir = "uploads/";
-        if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+  <?php if ($success): ?>
+    <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+  <?php endif; ?>
+  <?php if ($errors): ?>
+    <div class="alert alert-danger"><?= htmlspecialchars($errors) ?></div>
+  <?php endif; ?>
 
-        $fileName = time() . "_" . basename($_FILES["avatar"]["name"]);
-        $targetFile = $targetDir . $fileName;
+  <form action="update_profile.php" method="POST" enctype="multipart/form-data">
 
-        if (move_uploaded_file($_FILES["avatar"]["tmp_name"], $targetFile)) {
-            $stmt = $conn->prepare("UPDATE users SET avatar=:avatar WHERE id=:id");
-            $stmt->execute([":avatar"=>$targetFile, ":id"=>$user_id]);
-            $_SESSION['profile_success'] = "Profile picture updated.";
-        } else {
-            $errors[] = "Failed to upload image.";
-        }
-    } else {
-        $errors[] = "No file selected.";
-    }
-}
+    <!-- Profile Picture -->
+    <div class="profile-section text-center">
+      <div class="section-title">Profile Picture</div>
+      <img src="<?= $user['avatar'] ? 'uploads/'.$user['avatar'] : 'uploads/default.png' ?>" 
+           alt="Profile" class="profile-pic mb-3">
+      <div>
+        <input type="file" name="avatar" class="form-control w-50 mx-auto">
+      </div>
+    </div>
 
-// ✅ Update Info
-if ($action === "info") {
-    $first = trim($_POST['first_name']);
-    $last  = trim($_POST['last_name']);
-    $usern = trim($_POST['username']);
-    $email = trim($_POST['email']);
+    <!-- User Info -->
+    <div class="profile-section">
+      <div class="section-title">User Information</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label>Username</label>
+          <input type="text" class="form-control" value="<?= htmlspecialchars($user['username']) ?>" disabled>
+        </div>
+        <div class="col-md-6">
+          <label>Complete Name</label>
+          <input type="text" class="form-control" name="name" value="<?= htmlspecialchars($user['name']) ?>">
+        </div>
+        <div class="col-md-6">
+          <label>Email</label>
+          <input type="email" class="form-control" name="email" value="<?= htmlspecialchars($user['email']) ?>">
+        </div>
+        <div class="col-md-6">
+          <label>Mobile Number</label>
+          <input type="text" class="form-control" name="mobile" value="<?= htmlspecialchars($user['mobile']) ?>">
+        </div>
+        <div class="col-md-6">
+          <label>Academic Program</label>
+          <input type="text" class="form-control" value="<?= htmlspecialchars($user['program']) ?>" disabled>
+        </div>
+        <div class="col-md-6">
+          <label>Group</label>
+          <input type="text" class="form-control" value="<?= htmlspecialchars($user['role']) ?>" disabled>
+        </div>
+      </div>
+    </div>
 
-    if ($first=="" || $last=="" || $usern=="" || $email=="") {
-        $errors[] = "All fields are required.";
-    }
+    <!-- Change Password -->
+    <div class="profile-section">
+      <div class="section-title">Change Password</div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label>Current Password</label>
+          <input type="password" class="form-control" name="current_password">
+        </div>
+        <div class="col-md-4">
+          <label>New Password</label>
+          <input type="password" class="form-control" name="new_password">
+        </div>
+        <div class="col-md-4">
+          <label>Re-type New Password</label>
+          <input type="password" class="form-control" name="confirm_password">
+        </div>
+      </div>
+    </div>
 
-    if (!$errors) {
-        $stmt = $conn->prepare("UPDATE users SET first_name=:f,last_name=:l,username=:u,email=:e WHERE id=:id");
-        $stmt->execute([":f"=>$first,":l"=>$last,":u"=>$usern,":e"=>$email,":id"=>$user_id]);
-        $_SESSION['profile_success'] = "Profile information updated.";
-    }
-}
-
-// ✅ Change Password
-if ($action === "password") {
-    $current = $_POST['current_password'];
-    $new     = $_POST['new_password'];
-    $confirm = $_POST['confirm_password'];
-
-    $stmt = $conn->prepare("SELECT password FROM users WHERE id=:id");
-    $stmt->execute([":id"=>$user_id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$row || !password_verify($current, $row['password'])) {
-        $errors[] = "Current password is incorrect.";
-    } elseif ($new !== $confirm) {
-        $errors[] = "Passwords do not match.";
-    } elseif (strlen($new) < 6) {
-        $errors[] = "Password must be at least 6 characters.";
-    } else {
-        $hash = password_hash($new, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("UPDATE users SET password=:p WHERE id=:id");
-        $stmt->execute([":p"=>$hash,":id"=>$user_id]);
-        $_SESSION['profile_success'] = "Password updated successfully.";
-    }
-}
-
-if ($errors) {
-    $_SESSION['profile_errors'] = $errors;
-}
-header("Location: admin_profile.php");
-exit;
+    <div class="text-end">
+      <button type="submit" class="btn btn-success">💾 Save Changes</button>
+      <a href="dashboard.php" class="btn btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+</body>
+</html>
